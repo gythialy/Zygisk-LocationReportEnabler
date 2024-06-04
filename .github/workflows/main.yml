@@ -2,46 +2,54 @@ on: [push, pull_request]
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        os: [ ubuntu-latest ]
+    permissions:
+      contents: write
 
     steps:
       - name: Check out
-        uses: actions/checkout@v2
-
-      - name: Gradle wrapper validation
-        uses: gradle/wrapper-validation-action@v1
+        uses: actions/checkout@v4
 
       - name: Set up JDK 11
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          distribution: "temurin"
+          java-version: "11"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Cache Gradle
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-          restore-keys: ${{ runner.os }}-gradle-
-          
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-        
-      - name: Build Release with Gradle
-        run: ./gradlew :module:magisk
-        
-      - name: Build Debug with Gradle
-        run: ./gradlew :module:magiskDebug
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build Release and Debug with Gradle
+        run: |
+          ./gradlew :module:magisk
+          ./gradlew :module:magiskDebug
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v2
-        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
         with:
+          if-no-files-found: error
+          retention-days: 90
           name: Zygisk-LocationReportEnabler
-          path: module/build/outputs/zip
+          path: module/build/outputs/zip/
+
+      - name: GH Release
+        uses: softprops/action-gh-release@v2.0.5
+        with:
+          name: "Development Build"
+          tag_name: "nightly"
+          prerelease: true
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          files: |
+            module/build/outputs/zip/*.zip
