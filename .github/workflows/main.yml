@@ -45,7 +45,7 @@ jobs:
           path: module/build/outputs/zip/
 
       - name: GH Release
-        uses: softprops/action-gh-release@v2.0.5
+        uses: softprops/action-gh-release@v2.0.6
         with:
           name: "Development Build"
           tag_name: "nightly"
